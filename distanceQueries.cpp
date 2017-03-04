@@ -33,7 +33,7 @@ namespace bvhlib {
   struct QueryResult {
     
     /*! closest point on given triangle */
-    vec3f   point;
+    vec3fa  point;
     
     /*! distance to query point */
     float   distance;
@@ -42,21 +42,15 @@ namespace bvhlib {
     int32_t primID;
   };
 
-
-  
-  using std::min;
-  using std::max;
-
-
-  inline float computeDistance(box3f &box, const vec3f &P)
+  inline float computeDistance(box3fa &box, const vec3fa &P)
   {
-    const vec3f Pclamped = min(max(P,vec3f(box.lower)),vec3f(box.upper));
+    const vec3fa Pclamped = min(max(P,(box.lower)),(box.upper));
     return length(P-Pclamped);
   }
 
-  inline float computeDistance(const BVH::Node *node, const vec3f &P)
+  inline float computeDistance(const BVH::Node *node, const vec3fa &P)
   {
-    const vec3f Pclamped = min(max(P,node->lower),node->upper);
+    const vec3fa Pclamped = min(max(P,(const vec3fa&)node->lower),(const vec3fa&)node->upper);
     return length(P-Pclamped);
   }
   
@@ -68,183 +62,61 @@ namespace bvhlib {
     return std::min(std::max(f,0.f),1.f);
   }
 
-  inline vec3f projectToEdge(const vec3f &P, const vec3f &A, const vec3f &B)
+  inline vec3fa projectToEdge(const vec3fa &P, const vec3fa &A, const vec3fa &B)
   {
     float f = dot(P-A,B-A) / (double)dot(B-A,B-A);
-    f = max(0.f,min(1.f,f));
+    f = std::max(0.f,std::min(1.f,f));
     return A+f*(B-A);
   }
 
-  inline vec3f projectToPlane(const vec3f &P, const vec3f &N, const vec3f &A)
+  inline vec3fa projectToPlane(float &dist, const vec3fa &P, const vec3fa &N, const vec3fa &A)
   {
-    const vec3f PP = P - float((dot(P-A,N)/(double)dot(N,N))) * N;
-    DBG(if (dbg) { 
-      PRINT(PP);
-      PRINT(dot(PP-A,N));
-      })
+    const vec3fa PP = P - float((dot(P-A,N)/(double)dot(N,N))) * N;
+    dist = length(PP-P);
     return PP;
   }
 
-  inline void checkEdge(vec3f &closestPoint, float &closestDist,
-                        const vec3f &queryPoint,
-                        const vec3f &v0, const vec3f &v1)
+  inline void checkEdge(vec3fa &closestPoint, float &closestDist,
+                        const vec3fa &queryPoint,
+                        const vec3fa &v0, const vec3fa &v1)
   {
-    const vec3f PP = projectToEdge(queryPoint,v0,v1);
+    const vec3fa PP = projectToEdge(queryPoint,v0,v1);
     const float dist = length(PP-queryPoint);
     DBG(if (dbg) { 
-      PRINT(v0);
-      PRINT(v1);
-      PRINT(PP);
+        PRINT(v0);
+        PRINT(v1);
+        PRINT(PP);
       })
-    if (dist < closestDist) {
-      closestDist = dist;
-      closestPoint = PP;
-    }
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestPoint = PP;
+      }
   }
 
 
-  /*! compute the closest point P' to P on triangle ABC, and return it */
-  inline vec3f closestPoint(const vec3f &A,
-                            const vec3f &B,
-                            const vec3f &C,
-                            const vec3f &QP)
-  {
-    const vec3f N = (cross(B-A,C-A));
-    const vec3f Na = (cross(N,C-B));
-    const vec3f Nb = (cross(N,A-C));
-    const vec3f Nc = (cross(N,B-A));
-//     const vec3f N = normalize(cross(B-A,C-A));
-//     const vec3f Na = normalize(cross(N,C-B));
-//     const vec3f Nb = normalize(cross(N,A-C));
-//     const vec3f Nc = normalize(cross(N,B-A));
-    
-    float a = dot(QP-B,Na);// / dot(A-B,Na);
-    float b = dot(QP-C,Nb);// / dot(B-C,Nb);
-    float c = dot(QP-A,Nc);// / dot(C-A,Nc);
-
-    DBG(if (dbg) { 
-      std::cout << "------------------------------------------------------- " << std::endl;
-      std::cout << "testing against triangle " << A << " " << B << " " << C << std::endl;
-      box3f bounds = ospcommon::empty;
-      bounds.extend(A);
-      bounds.extend(B);
-      bounds.extend(C);
-      std::cout << "box : " << bounds << " dist " << computeDistance(bounds,QP) << std::endl;
-      PRINT(QP);
-
-      PRINT(A);
-      PRINT(B);
-      PRINT(C);
-
-      PRINT(N);
-      PRINT(Na);
-      PRINT(Nb);
-      PRINT(Nc);
-      PRINT(a);
-      PRINT(b);
-      PRINT(c);
-
-      std::cout << "distance to plane : " << (dot(QP-A,N)/length(N))  <<  std::endl;
-      })
-
-
-    vec3f closest;
-    if (min(min(a,b),c) >= 0.f)
-      closest = projectToPlane(QP,N,A);
-    else {
-      float closestDist = std::numeric_limits<float>::infinity();
-      if (a <= 0.f) 
-        checkEdge(closest,closestDist,QP,B,C);
-      if (b <= 0.f) 
-        checkEdge(closest,closestDist,QP,C,A);
-      if (c <= 0.f) 
-        checkEdge(closest,closestDist,QP,A,B);
-    }
-    
-    return closest;
-
-
-//     const vec3f e0 = B - A;
-//     const vec3f e1 = C - A;
-//     const vec3f v0 = A - P;
-      
-//     const float a = dot(e0,e0);
-//     const float b = dot(e0,e1);
-//     const float c = dot(e1,e1);
-//     const float d = dot(e0,v0);
-//     const float e = dot(e1,v0);
-
-//     float det = a*c-b*b; 
-//     float s   = b*e - c*d;
-//     float t   = b*d - a*a;
-
-//     if (s+t < det) {
-//       if (s < 0.f) {
-//         if (t < 0.f) {
-//           if (d < 0.d) {
-//             s = clamp01(-d,a);
-//             t = 0.f;
-//           } else {
-//             s = 0.f;
-//             t = clamp01(-e,c);
-//           }
-//         } else {
-//           s = 0.f;
-//           t = clamp01(-e,c);
-//         }
-//       } else if (t < 0.f) {
-//         s = clamp01(-d,a);
-//         t = 0.f;
-//       } else {
-//         const float invDet = 1.f/det;
-//         s *= invDet;
-//         t *= invDet;
-//       }
-//     } else {
-//       if (s < 0.f) {
-//         float tmp0 = b+d;
-//         float tmp1 = c+e;
-//         if (tmp1 > tmp0) {
-//           float num = tmp1-tmp0;
-//           float den = a-2.f*b+c;
-//           s = clamp01(num,den);
-//           t = 1.f - s;
-//         } else {
-//           s = 0.f;
-//           t = clamp01(-e,c);
-//         }
-//       } else if (t < 0.f) {
-//         if (a+d > b+e) {
-//           float num= c+e-b-d;
-//           float den = a-2.f*b+c;
-//           s = clamp01(num,den);
-//           t = 1.f-s;
-//         } else {
-//           s = clamp01(-e,c);
-//           t = 0.f;
-//         }
-//       } else {
-//         float num = c+e-b-d;
-//         float den = a-2.f*b+c;
-//         s = clamp01(num,den);
-//         t = 1.f - s;
-//       }
-//     }
-//     return A + s*e0 + t*e1;
-  }
-    
   struct QueryObject : public bvhlib::Geometry {
+    
+    /*! destructor - clean up */
     virtual ~QueryObject() {};
-    // virtual void computeBounds(RTCBounds &bounds, const size_t primID) = 0;
-    virtual void updateIfCloser(QueryResult &resut,
-                                const vec3f &P,
-                                const size_t primID) = 0;
+    
+    /*! test new point, and update 'result' if it's closer */
+    virtual void testPrimAndUpdateIfCloser(QueryResult &result,
+                                           const vec3fa &P,
+                                           const size_t primID) = 0;
 
     BVH       bvh;
   };
 
-  template<typename coord_t, typename index_t>
+  struct Triangle {
+    vec3fa v0;
+    vec3fa v1;
+    vec3fa v2;
+  };
+
+  template<typename coord_t, typename index_t, bool has_strides>
   struct GeneralTriangleMesh : public QueryObject {
+
+    /*! construct a new general triangle mesh */
     GeneralTriangleMesh(const coord_t *vtx_x,
                         const coord_t *vtx_y,
                         const coord_t *vtx_z,
@@ -254,6 +126,27 @@ namespace bvhlib {
                         const index_t *idx_z,
                         const size_t   idx_stride,
                         const size_t   numTriangles);
+
+    /*! destructor - clean up */
+    virtual ~GeneralTriangleMesh()
+    { /* nothing to do - we don't own any of the arrays, so nothing to free */ }
+
+
+    /*! get a triangle's vertices to operate on, hiding thinke like addressing */
+    inline Triangle getTriangle(const size_t primID) const;
+    
+    /*! number of total primitmives (inherited from Geometry: the BVH
+      builder needs to know this) */
+    virtual size_t numPrimitives() const
+    { return numTriangles; }
+
+    /*! test a new point, and update 'result' if it's closer */
+    virtual void initBuildPrim(BuildPrim &bp, const size_t primID) const;
+
+    /*! test a new point, and update 'result' if it's closer */
+    virtual void testPrimAndUpdateIfCloser(QueryResult &result,
+                                           const vec3fa &queryPoint,
+                                           const size_t primID);
 
     const coord_t *const vtx_x;
     const coord_t *const vtx_y;
@@ -265,71 +158,11 @@ namespace bvhlib {
     const size_t   idx_stride;
     const size_t   numTriangles;
     
-    virtual ~GeneralTriangleMesh()
-    {
-    }
-
-    virtual size_t numPrimitives() const { return numTriangles; }
-
-    virtual void initBuildPrim(BuildPrim &bp, const size_t primID) const
-    {
-      const size_t i0 = this->idx_x[primID*idx_stride];
-      const size_t i1 = this->idx_y[primID*idx_stride];
-      const size_t i2 = this->idx_z[primID*idx_stride];
-
-      const vec3fa v0(this->vtx_x[i0*vtx_stride],
-                      this->vtx_y[i0*vtx_stride],
-                      this->vtx_z[i0*vtx_stride]);
-      const vec3fa v1(this->vtx_x[i1*vtx_stride],
-                      this->vtx_y[i1*vtx_stride],
-                      this->vtx_z[i1*vtx_stride]);
-      const vec3fa v2(this->vtx_x[i2*vtx_stride],
-                      this->vtx_y[i2*vtx_stride],
-                      this->vtx_z[i2*vtx_stride]); 
-      const vec3f lo = min(min(v0,v1),v2);
-      const vec3f hi = max(max(v0,v1),v2);
-      bp.lower = lo;
-      bp.upper = hi;
-      // bp.geomID = primID >> 32;
-      // bp.primID = primID;
-    }
-
-    /* based on dave eberly's test */
-    virtual void updateIfCloser(QueryResult &result,
-                                const vec3f &P,
-                                const size_t primID)
-    {
-      const size_t i0 = this->idx_x[primID*idx_stride];
-      const size_t i1 = this->idx_y[primID*idx_stride];
-      const size_t i2 = this->idx_z[primID*idx_stride];
-
-      const vec3f A(this->vtx_x[i0*vtx_stride],
-                    this->vtx_y[i0*vtx_stride],
-                    this->vtx_z[i0*vtx_stride]);
-      const vec3f B(this->vtx_x[i1*vtx_stride],
-                    this->vtx_y[i1*vtx_stride],
-                    this->vtx_z[i1*vtx_stride]);
-      const vec3f C(this->vtx_x[i2*vtx_stride],
-                    this->vtx_y[i2*vtx_stride],
-                    this->vtx_z[i2*vtx_stride]); 
-      DBG(if (dbg) {
-      std::cout << "------------------------------------------------------- " << std::endl;
-      std::cout << "testing against triangle " << i0 << " " << i1 << " " << i2 << std::endl;
-        })
-
-      const vec3f PP   = closestPoint(A,B,C,P);
-      const float dist = length(PP-P);
-      if (dist >= result.distance) return;
-
-      result.distance = dist;
-      result.point    = PP;
-      result.primID   = primID;
-    }
   };
 
 
-  template<typename coord_t, typename index_t>
-  GeneralTriangleMesh<coord_t,index_t>::GeneralTriangleMesh(const coord_t *vtx_x,
+  template<typename coord_t, typename index_t, bool has_strides>
+  GeneralTriangleMesh<coord_t,index_t,has_strides>::GeneralTriangleMesh(const coord_t *vtx_x,
                                                             const coord_t *vtx_y,
                                                             const coord_t *vtx_z,
                                                             const size_t   vtx_stride,
@@ -351,6 +184,96 @@ namespace bvhlib {
     bvh.build(this);
   }
 
+  /*! get a triangle's vertices to operate on, hiding thinke like addressing */
+  template<typename coord_t, typename index_t, bool has_strides>
+  inline Triangle GeneralTriangleMesh<coord_t,index_t,has_strides>::getTriangle(const size_t primID) const
+  {
+    Triangle t;
+    if (has_strides) {
+    const size_t i0 = this->idx_x[primID*idx_stride];
+    const size_t i1 = this->idx_y[primID*idx_stride];
+    const size_t i2 = this->idx_z[primID*idx_stride];
+    
+    t.v0 = vec3fa(this->vtx_x[i0*vtx_stride],
+                  this->vtx_y[i0*vtx_stride],
+                  this->vtx_z[i0*vtx_stride]);
+    t.v1 = vec3fa(this->vtx_x[i1*vtx_stride],
+                  this->vtx_y[i1*vtx_stride],
+                  this->vtx_z[i1*vtx_stride]);
+    t.v2 = vec3fa(this->vtx_x[i2*vtx_stride],
+                  this->vtx_y[i2*vtx_stride],
+                  this->vtx_z[i2*vtx_stride]);
+    } else {
+    const size_t i0 = this->idx_x[primID];
+    const size_t i1 = this->idx_y[primID];
+    const size_t i2 = this->idx_z[primID];
+    
+    t.v0 = vec3fa(this->vtx_x[i0],
+                  this->vtx_y[i0],
+                  this->vtx_z[i0]);
+    t.v1 = vec3fa(this->vtx_x[i1],
+                  this->vtx_y[i1],
+                  this->vtx_z[i1]);
+    t.v2 = vec3fa(this->vtx_x[i2],
+                  this->vtx_y[i2],
+                  this->vtx_z[i2]);
+    }
+    return t;
+  }
+  
+  /*! test a new point, and update 'result' if it's closer */
+  template<typename coord_t, typename index_t, bool has_strides>
+  void GeneralTriangleMesh<coord_t,index_t,has_strides>
+  ::testPrimAndUpdateIfCloser(QueryResult &result,
+                              const vec3fa &queryPoint,
+                              const size_t primID)
+  {
+    const Triangle tri = getTriangle(primID);
+    const vec3fa &A = tri.v0;
+    const vec3fa &B = tri.v1;
+    const vec3fa &C = tri.v2;
+
+    const vec3fa N = (cross(B-A,C-A));
+    const vec3fa Na = (cross(N,C-B));
+    const vec3fa Nb = (cross(N,A-C));
+    const vec3fa Nc = (cross(N,B-A));
+    
+    const float a = dot(queryPoint-B,Na);
+    const float b = dot(queryPoint-C,Nb);
+    const float c = dot(queryPoint-A,Nc);
+      
+    vec3fa closestPoint;
+    float closestDist;
+    if (std::min(std::min(a,b),c) >= 0.f)
+      closestPoint = projectToPlane(closestDist,queryPoint,N,A);
+    else {
+      closestDist = std::numeric_limits<float>::infinity();
+      if (a <= 0.f) 
+        checkEdge(closestPoint,closestDist,queryPoint,B,C);
+      if (b <= 0.f) 
+        checkEdge(closestPoint,closestDist,queryPoint,C,A);
+      if (c <= 0.f) 
+        checkEdge(closestPoint,closestDist,queryPoint,A,B);
+    }
+      
+    if (closestDist >= result.distance) return;
+      
+    result.distance = closestDist;
+    result.point    = closestPoint;
+    result.primID   = primID;
+  }
+  
+
+  /*! test a new point, and update 'result' if it's closer */
+  template<typename coord_t, typename index_t, bool has_strides>
+  void GeneralTriangleMesh<coord_t,index_t,has_strides>
+  ::initBuildPrim(BuildPrim &bp, const size_t primID) const
+  {
+    const Triangle tri = getTriangle(primID);
+    bp.lower = min(min(tri.v0,tri.v1),tri.v2);
+    bp.upper = max(max(tri.v0,tri.v1),tri.v2);
+  }
+
   extern "C"
   distance_query_scene rtdqNewTriangleMeshfi(const float   *vertex_x,
                                              const float   *vertex_y,
@@ -362,10 +285,17 @@ namespace bvhlib {
                                              const size_t   index_stride,
                                              const size_t    numTriangles)
   {
-    return (distance_query_scene)
-      new GeneralTriangleMesh<float,int>(vertex_x,vertex_y,vertex_z,vertex_stride,
-                                         index_x,index_y,index_z,index_stride,
-                                         numTriangles);
+    if (index_stride == 1 && vertex_stride == 1)
+      return (distance_query_scene)
+        new GeneralTriangleMesh<float,int,0>(vertex_x,vertex_y,vertex_z,vertex_stride,
+                                             index_x,index_y,index_z,index_stride,
+                                             numTriangles);
+    else
+      return (distance_query_scene)
+        new GeneralTriangleMesh<float,int,1>(vertex_x,vertex_y,vertex_z,vertex_stride,
+                                             index_x,index_y,index_z,index_stride,
+                                             numTriangles);
+
   }
 
   extern "C"
@@ -379,104 +309,91 @@ namespace bvhlib {
                                              const size_t   index_stride,
                                              const size_t    numTriangles)
   {
-    return (distance_query_scene)
-      new GeneralTriangleMesh<double,int>(vertex_x,vertex_y,vertex_z,vertex_stride,
-                                         index_x,index_y,index_z,index_stride,
-                                         numTriangles);
+    if (index_stride == 1 && vertex_stride == 1)
+      return (distance_query_scene)
+        new GeneralTriangleMesh<double,int,0>(vertex_x,vertex_y,vertex_z,vertex_stride,
+                                              index_x,index_y,index_z,index_stride,
+                                              numTriangles);
+    else
+      return (distance_query_scene)
+        new GeneralTriangleMesh<double,int,1>(vertex_x,vertex_y,vertex_z,vertex_stride,
+                                              index_x,index_y,index_z,index_stride,
+                                              numTriangles);
+
   }
 
-  // inline vfloat<4> computeDistance(const BVH4::AlignedNode *node, const vec3f &P)
-  // {
-  //   // vfloat<4> clamped_x = min(max(P.x,node->lower_x),node->upper_x);
-  //   // vfloat<4> clamped_y = min(max(P.y,node->lower_y),node->upper_y);
-  //   // vfloat<4> clamped_z = min(max(P.z,node->lower_z),node->upper_z);
-
-  //   // vfloat<4> dx = clamped_x - P.x;
-  //   // vfloat<4> dy = clamped_y - P.y;
-  //   // vfloat<4> dz = clamped_z - P.z;
-                 
-  //   // return dx*dx + dy*dy + dz*dz;
-  // }
-  
   void oneQuery(QueryResult &result,
                 QueryObject *qo,
-                const vec3f &point)
+                const vec3fa &point)
   {
-    // std::cout << "=======================================================" << std::endl;
-    // std::cout << "new query " << point << std::endl;
     result.distance = std::numeric_limits<float>::infinity();
     result.primID   = -1;
   
-    // // we already type-checked this before tihs fct ever got called,
-    // // so this is safe:
-    // BVH4 *bvh4 = (BVH4*)((Accel*)qo->scene)->intersectors.ptr;
-    
     std::priority_queue<std::pair<float,const BVH::Node *>,
                         std::vector<std::pair<float,const BVH::Node *>>,
                         std::greater<std::pair<float,const BVH::Node *>>
-                        > queue;
-    // push sentinel
-    queue.push(std::pair<float,const BVH::Node *>
-               (std::numeric_limits<float>::infinity(),NULL));
+                        > traversalQueue;
+    
+    // push sentinel, so we never have to check if the queue runs dry.
+    traversalQueue.push(std::pair<float,const BVH::Node *>
+                        (std::numeric_limits<float>::infinity(),NULL));
     
     const std::vector<BVH::Node> &nodeList = qo->bvh.nodeList;
     const BVH::Node *node = &nodeList[0];
     while (1) {
-      // std::cout << "--------------------------------------------" << std::endl;
-      // PRINT(point);
-      // PRINT((box3fa &)*node);
-      // PRINT(computeDistance(node,point));
       if (!node->isLeaf) {
         // this is a inner node ...
-        const BVH::Node *child0 = &nodeList[node->child+0];
-        const BVH::Node *child1 = &nodeList[node->child+1];
+        const BVH::Node *const child0 = &nodeList[node->child+0];
+        const BVH::Node *const child1 = &nodeList[node->child+1];
         const float dist0 = computeDistance(child0,point);
         const float dist1 = computeDistance(child1,point);
-        // PRINT(dist0);
-        // PRINT(dist1);
 
-        if (dist0 == 0.f) {
-          node = child0;
-          if (dist1 < result.distance)
-            queue.push(std::pair<float,const BVH::Node*>(dist1,child1));
-          continue;
-        } else if (dist1 == 0.f) {
-          node = child1;
-          if (dist0 < result.distance)
-            queue.push(std::pair<float,const BVH::Node*>(dist0,child0));
-          continue;
+        /* fast path: check if closer of the two children is already
+           as good as anything the queue has to offer - because if so,
+           we can save the pushing and popping of this node, and set
+           to it right away */
+        if (dist0 < dist1) {
+          if (dist0 <= std::min(traversalQueue.top().first,result.distance)) {
+            node = child0;
+            if (dist1 < result.distance)
+              traversalQueue.push(std::pair<float,const BVH::Node*>(dist1,child1));
+            continue;
+          }
+        } else {
+          if (dist1 <= std::min(traversalQueue.top().first,result.distance)) {
+            node = child1;
+            if (dist0 < result.distance)
+              traversalQueue.push(std::pair<float,const BVH::Node*>(dist0,child0));
+            continue;
+          }
         }
 
+        /* fast-path optimization didn't apply - push both children
+           (if they can't be culled, of course), and let the queue
+           provide the next node */
         if (dist0 < result.distance)
-          queue.push(std::pair<float,const BVH::Node*>(dist0,child0));
+          traversalQueue.push(std::pair<float,const BVH::Node*>(dist0,child0));
         if (dist1 < result.distance)
-          queue.push(std::pair<float,const BVH::Node*>(dist1,child1));
+          traversalQueue.push(std::pair<float,const BVH::Node*>(dist1,child1));
       } else {
-        /// this is a leaf node
-        // std::cout << "**** testing triangle " << node->child << " *****" << std::endl;
-        qo->updateIfCloser(result,point,node->child);
+        qo->testPrimAndUpdateIfCloser(result,point,node->child);
       }
 
-      // any more candidates in queue?
-      if (queue.empty()) break;
 
+      /* need to get a next node to traverse, from the trv queue: */
+      
+      /* note - _not_ checking for empty, since we know to have a sentinel, anyway */
+      // if (traversalQueue.empty()) break;
+      
       // closest candidate is already too far?
-      // PRINT(queue.top().first);
-      // PRINT(result.distance);
-      if (queue.top().first >= result.distance) break;
+      if (traversalQueue.top().first >= result.distance) break;
 
       // closest candidate might be closer: pop it and use it
-      node = queue.top().second;
-      queue.pop();
+      node = traversalQueue.top().second;
+      traversalQueue.pop();
     }
   }
   
-  void computeQuery(QueryResult *resultArray,
-                    QueryObject *qo,
-                    const vec3f *const point,  const size_t numPoints)
-  {
-  }
-
   extern "C"
   void rtdqComputeClosestPointsfi(distance_query_scene scene,
                                   float   *out_closest_point_pos_x,
@@ -496,15 +413,10 @@ namespace bvhlib {
     QueryObject *qo = (QueryObject *)scene;
     if (!qo)
       return;
-    // AccelData *accel = ((Accel*)qo->scene)->intersectors.ptr;
-    // if (!accel)
-    //   return;
-    // if (accel->type != AccelData::TY_BVH4)
-    //   return;
 
     for (size_t i=0;i<numQueryPoints;i++) {
       QueryResult qr;
-      oneQuery(qr,qo,vec3f(in_query_point_x[i*in_query_point_stride],
+      oneQuery(qr,qo,vec3fa(in_query_point_x[i*in_query_point_stride],
                            in_query_point_y[i*in_query_point_stride],
                            in_query_point_z[i*in_query_point_stride]));
       if (out_closest_point_pos_x)
@@ -518,7 +430,6 @@ namespace bvhlib {
       if (out_closest_point_dist)
         out_closest_point_dist[i*out_closest_point_dist_stride] = qr.distance;
     }
-    // throw std::runtime_error("not implemented");
   }
   
   extern "C"
@@ -540,79 +451,26 @@ namespace bvhlib {
     QueryObject *qo = (QueryObject *)scene;
     if (!qo)
       return;
-    // AccelData *accel = ((Accel*)qo->scene)->intersectors.ptr;
-    // if (!accel)
-    //   return;
-    // if (accel->type != AccelData::TY_BVH4)
-    //   return;
 
     for (size_t qpi=0;qpi<numQueryPoints;qpi++) {
-      vec3f queryPoint(in_query_point_x[qpi*in_query_point_stride],
-                       in_query_point_y[qpi*in_query_point_stride],
-                       in_query_point_z[qpi*in_query_point_stride]);
-      DBG(dbg = (qpi == 30));
-
-      DBG(dbg = 1);
-
-//       if (dbg) {
-//         GeneralTriangleMesh<double,int> *mesh = (GeneralTriangleMesh<double,int> *)qo;
-
-//         std::cout << "OK - going to find brute-force closest triangle" << std::endl;
-//         for (int i=0;i<mesh->numTriangles;i++) {
-//           const size_t idx_x = mesh->idx_x[i*mesh->idx_stride];
-//           const size_t idx_y = mesh->idx_y[i*mesh->idx_stride];
-//           const size_t idx_z = mesh->idx_z[i*mesh->idx_stride];
-//           const vec3f A = vec3f(mesh->vtx_x[idx_x*mesh->vtx_stride],
-//                                 mesh->vtx_y[idx_x*mesh->vtx_stride],
-//                                 mesh->vtx_z[idx_x*mesh->vtx_stride]);
-//           const vec3f B = vec3f(mesh->vtx_x[idx_y*mesh->vtx_stride],
-//                                 mesh->vtx_y[idx_y*mesh->vtx_stride],
-//                                 mesh->vtx_z[idx_y*mesh->vtx_stride]);
-//           const vec3f C = vec3f(mesh->vtx_x[idx_z*mesh->vtx_stride],
-//                                 mesh->vtx_y[idx_z*mesh->vtx_stride],
-//                                 mesh->vtx_z[idx_z*mesh->vtx_stride]);
-//           box3f bounds = ospcommon::empty;
-//           bounds.extend(A);
-//           bounds.extend(B);
-//           bounds.extend(C);
-//           float boundsDist = computeDistance(bounds,queryPoint);
-//           if (boundsDist > 1e-6f) continue;
-
-//           PRINT(idx_x);
-//           PRINT(idx_y);
-//           PRINT(idx_z);
-//           PRINT(boundsDist);
-//           PRINT(A);
-//           PRINT(B);
-//           PRINT(C);
-//           const vec3f N = cross(C-A,B-A);
-//           float projectedDist = dot(queryPoint-A,N) / length(N);
-//           PRINT(projectedDist);
-//         }
-//       }
-
+      const vec3fa queryPoint(in_query_point_x[qpi*in_query_point_stride],
+                             in_query_point_y[qpi*in_query_point_stride],
+                             in_query_point_z[qpi*in_query_point_stride]);
+      
       QueryResult qr;
       oneQuery(qr,qo,queryPoint);
-
-      if (qr.point.y > .13f) {
-        std::cout << "TOO BIG IN Y" << std::endl;
-        PRINT(qr.point);
-        PRINT(qr.distance);
-      }
-
-
-      if (out_closest_point_pos_x)  out_closest_point_pos_x[qpi*out_closest_point_pos_stride] = qr.point.x;
-      if (out_closest_point_pos_y)  out_closest_point_pos_y[qpi*out_closest_point_pos_stride] = qr.point.y;
-      if (out_closest_point_pos_z)  out_closest_point_pos_z[qpi*out_closest_point_pos_stride] = qr.point.z;
-      if (out_closest_point_primID) out_closest_point_primID[qpi*out_closest_point_primID_stride] = qr.primID;
-      if (out_closest_point_dist)   out_closest_point_dist[qpi*out_closest_point_dist_stride] = qr.distance;
-
-      DBG(if (dbg) {
-        PRINT(qr.point);
-        PRINT(qr.distance);
-        })
+      
+      if (out_closest_point_pos_x)
+        out_closest_point_pos_x[qpi*out_closest_point_pos_stride] = qr.point.x;
+      if (out_closest_point_pos_y)
+        out_closest_point_pos_y[qpi*out_closest_point_pos_stride] = qr.point.y;
+      if (out_closest_point_pos_z)
+        out_closest_point_pos_z[qpi*out_closest_point_pos_stride] = qr.point.z;
+      if (out_closest_point_primID)
+        out_closest_point_primID[qpi*out_closest_point_primID_stride] = qr.primID;
+      if (out_closest_point_dist)
+        out_closest_point_dist[qpi*out_closest_point_dist_stride] = qr.distance;
     }
-    // throw std::runtime_error("not implemented");
   }
   
   

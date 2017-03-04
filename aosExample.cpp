@@ -27,6 +27,8 @@ namespace embree {
   
   extern "C" int main(int ac, char **av)
   {
+    srand48(290374);
+
     int numTriangles = 1000000;
     float maxEdgeLen = 1.f/(powf(numTriangles,1.f/3.f));
     int numPoints    = 1000000;
@@ -49,9 +51,7 @@ namespace embree {
     
     // the points we're query'ing
     std::vector<vec3f> queryPoint;
-    //    loadQueryPoints(queryPoint,av[2]);
     for (int i=0;i<numPoints;i++) {
-#if 1
       int triID = int(drand48()*numTriangles);
       float u = drand48();
       float v = drand48();
@@ -61,9 +61,6 @@ namespace embree {
       if (u+v >= 1.f) { u = 1-u; v = 1-v; }
       const vec3f pointOnTri = A+u*(B-A)+v*(C-A);
       queryPoint.push_back(pointOnTri + float(0.1f*drand48()*maxEdgeLen)*vec3f(drand48(),drand48(),drand48()));
-#else
-      queryPoint.push_back(vec3f(drand48(),drand48(),drand48()));
-#endif
     }
 
     // the result of our queries
