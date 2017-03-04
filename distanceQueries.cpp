@@ -25,7 +25,7 @@
 
 namespace bvhlib {
 
-#define DBG(a) /**/
+#define DBG(a) 
 
   DBG(bool dbg = false);
 
@@ -70,14 +70,14 @@ namespace bvhlib {
 
   inline vec3f projectToEdge(const vec3f &P, const vec3f &A, const vec3f &B)
   {
-    float f = dot(P-A,B-A) / dot(B-A,B-A);
+    float f = dot(P-A,B-A) / (double)dot(B-A,B-A);
     f = max(0.f,min(1.f,f));
     return A+f*(B-A);
   }
 
   inline vec3f projectToPlane(const vec3f &P, const vec3f &N, const vec3f &A)
   {
-    const vec3f PP = P - dot(P-A,N) * N;
+    const vec3f PP = P - float((dot(P-A,N)/(double)dot(N,N))) * N;
     DBG(if (dbg) { 
       PRINT(PP);
       PRINT(dot(PP-A,N));
@@ -552,6 +552,8 @@ namespace bvhlib {
                        in_query_point_z[qpi*in_query_point_stride]);
       DBG(dbg = (qpi == 30));
 
+      DBG(dbg = 1);
+
 //       if (dbg) {
 //         GeneralTriangleMesh<double,int> *mesh = (GeneralTriangleMesh<double,int> *)qo;
 
@@ -591,16 +593,19 @@ namespace bvhlib {
 
       QueryResult qr;
       oneQuery(qr,qo,queryPoint);
-      if (out_closest_point_pos_x)
-        out_closest_point_pos_x[qpi*out_closest_point_pos_stride] = qr.point.x;
-      if (out_closest_point_pos_y)
-        out_closest_point_pos_y[qpi*out_closest_point_pos_stride] = qr.point.y;
-      if (out_closest_point_pos_z)
-        out_closest_point_pos_z[qpi*out_closest_point_pos_stride] = qr.point.z;
-      if (out_closest_point_primID)
-        out_closest_point_primID[qpi*out_closest_point_primID_stride] = qr.primID;
-      if (out_closest_point_dist)
-        out_closest_point_dist[qpi*out_closest_point_dist_stride] = qr.distance;
+
+      if (qr.point.y > .13f) {
+        std::cout << "TOO BIG IN Y" << std::endl;
+        PRINT(qr.point);
+        PRINT(qr.distance);
+      }
+
+
+      if (out_closest_point_pos_x)  out_closest_point_pos_x[qpi*out_closest_point_pos_stride] = qr.point.x;
+      if (out_closest_point_pos_y)  out_closest_point_pos_y[qpi*out_closest_point_pos_stride] = qr.point.y;
+      if (out_closest_point_pos_z)  out_closest_point_pos_z[qpi*out_closest_point_pos_stride] = qr.point.z;
+      if (out_closest_point_primID) out_closest_point_primID[qpi*out_closest_point_primID_stride] = qr.primID;
+      if (out_closest_point_dist)   out_closest_point_dist[qpi*out_closest_point_dist_stride] = qr.distance;
 
       DBG(if (dbg) {
         PRINT(qr.point);

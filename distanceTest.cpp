@@ -28,6 +28,7 @@ std::vector<double> reference_dist;
 std::vector<double> reference_x;
 std::vector<double> reference_y;
 std::vector<double> reference_z;
+std::vector<double> dennis_dist;
 
 size_t numTriangles,numVertices;
 
@@ -98,6 +99,21 @@ void loadReference(const std::string &fileName)
   fclose(file);
 }
 
+void loadDennis(const std::string &fileName)
+{
+  FILE *file = fopen(fileName.c_str(),"r");
+  if (!file) throw std::runtime_error("could not open "+fileName);
+
+  for (int i=0;i<point_x.size();i++) {
+    double s;
+    if (fscanf(file,"%lf\n",&s) != 1)
+      throw std::runtime_error("could not read dennis result from "+fileName);
+    dennis_dist.push_back(s);
+  }
+  std::cout << "loaded " << dennis_dist.size() << " reference distances" << std::endl;
+  fclose(file);
+}
+
 void loadPoints(const std::string &fileName)
 {
   FILE *file = fopen(fileName.c_str(),"r");
@@ -127,7 +143,9 @@ int main(int ac, char **av)
 
   loadTriangles(dir+"/triang_input.txt");
   loadPoints(dir+"/point_input.txt");
+//   loadReference(dir+"/dennis.dist.txt");
   loadReference(dir+"/tim.xyzs.txt");
+  loadDennis(dir+"/dennis.dist.txt");
   
   auto begin = std::chrono::system_clock::now();
   std::cout << "creating embree query object" << std::endl;
@@ -164,31 +182,13 @@ int main(int ac, char **av)
 //     }
 //   }
 
-#if 0
-  std::cout << "calling query (threaded)" << std::endl;
-  rtdqComputeClosestPointsdi_threaded(scene,
-                             // no position:
-                             NULL,NULL,NULL,0,
-                             // distance:
-                             result_dist.data(),1,
-                             // no prim IDs
-                             NULL,0,
-                             // input: the query points
-                             point_x.data(),point_y.data(),point_z.data(),1,
-                             // num points:
-                             point_x.size());
-#else
   std::cout << "calling query (scalar)" << std::endl;
   rtdqComputeClosestPointsdi(scene,
-                             // no position:
-# if 1
+                             // closest point:
                              result_x.data(),
                              result_y.data(),
                              result_z.data(),
                              1,
-# else
-                             NULL,NULL,NULL,0,
-# endif
                              // distance:
                              result_dist.data(),1,
                              // no prim IDs
@@ -197,7 +197,6 @@ int main(int ac, char **av)
                              point_x.data(),point_y.data(),point_z.data(),1,
                              // num points:
                              point_x.size());
-#endif
   auto done_all = std::chrono::system_clock::now();
   
   size_t numPoints = point_x.size();
@@ -209,23 +208,168 @@ int main(int ac, char **av)
   std::cout << "time to query " << numPoints << " points: " << queryTime.count() << "s" << std::endl;
   std::cout << "(this is " << (1000000.f * queryTime.count()/numPoints) << " micro seconds/query)" << std::endl;
 
-  DBG(
+#if 1
+
+  double most_further_tim_mag = 0.f;
+  double most_further_tim_myDist;
+  double most_further_tim_hisDist;
+  double most_further_tim_input[3];
+  double most_further_tim_result[3];
+
+  double most_closer_tim_mag = 0.f;
+  double most_closer_tim_myDist;
+  double most_closer_tim_hisDist;
+  double most_closer_tim_input[3];
+  double most_closer_tim_result[3];
+
+
+  double most_further_dennis_mag = 0.f;
+  double most_further_dennis_myDist;
+  double most_further_dennis_hisDist;
+  double most_further_dennis_input[3];
+  double most_further_dennis_result[3];
+
+  double most_closer_dennis_mag = 0.f;
+  double most_closer_dennis_myDist;
+  double most_closer_dennis_hisDist;
+  double most_closer_dennis_input[3];
+  double most_closer_dennis_result[3];
+
+
   std::cout << "echcking ..." << std::endl;
   for (int i=0;i<point_x.size();i++) {
-    if (result_dist[i] > reference_dist[i]+1e-7f) {
-      std::cout << "fail for point " << i << "  : " << point_x[i] << " " << point_y[i] << " " << point_z[i]  << " " << std::endl;
-      std::cout << "   we found  " << result_x[i] << " " << result_y[i] << " " << result_z[i] << " " << " dist " << result_dist[i] << std::endl;
-      std::cout << "   reference " << reference_x[i]  << " " << reference_y[i] << " " << reference_z[i] << " " << " dist " << reference_dist[i] << std::endl;
+
+    printf("results for %8i: mine %18.16f    tim %18.16f    dennis %18.16f\n",i,result_dist[i],reference_dist[i],dennis_dist[i]);
+    
+
+    float closer_dennis = dennis_dist[i] - result_dist[i];
+    if (closer_dennis > most_closer_dennis_mag) {
+      most_closer_dennis_mag = closer_dennis;
+      most_closer_dennis_input[0] = point_x[i];
+      most_closer_dennis_input[1] = point_y[i];
+      most_closer_dennis_input[2] = point_z[i];
+      most_closer_dennis_result[0] = result_x[i];
+      most_closer_dennis_result[1] = result_y[i];
+      most_closer_dennis_result[2] = result_z[i];
+      most_closer_dennis_myDist    = result_dist[i];
+      most_closer_dennis_hisDist    = dennis_dist[i];
+    }
+
+    float further_dennis = result_dist[i] - dennis_dist[i];
+    if (further_dennis > most_further_dennis_mag) {
+      most_further_dennis_mag = further_dennis;
+      most_further_dennis_input[0] = point_x[i];
+      most_further_dennis_input[1] = point_y[i];
+      most_further_dennis_input[2] = point_z[i];
+      most_further_dennis_result[0] = result_x[i];
+      most_further_dennis_result[1] = result_y[i];
+      most_further_dennis_result[2] = result_z[i];
+      most_further_dennis_myDist    = result_dist[i];
+      most_further_dennis_hisDist    = dennis_dist[i];
+    }
+
+    float closer_tim = reference_dist[i] - result_dist[i];
+    if (closer_tim > most_closer_tim_mag) {
+      most_closer_tim_mag = closer_tim;
+      most_closer_tim_input[0] = point_x[i];
+      most_closer_tim_input[1] = point_y[i];
+      most_closer_tim_input[2] = point_z[i];
+      most_closer_tim_result[0] = result_x[i];
+      most_closer_tim_result[1] = result_y[i];
+      most_closer_tim_result[2] = result_z[i];
+      most_closer_tim_myDist    = result_dist[i];
+      most_closer_tim_hisDist    = reference_dist[i];
+    }
+
+    float further_tim = result_dist[i] - reference_dist[i];
+    if (further_tim > most_further_tim_mag) {
+      most_further_tim_mag = further_tim;
+      most_further_tim_input[0] = point_x[i];
+      most_further_tim_input[1] = point_y[i];
+      most_further_tim_input[2] = point_z[i];
+      most_further_tim_result[0] = result_x[i];
+      most_further_tim_result[1] = result_y[i];
+      most_further_tim_result[2] = result_z[i];
+      most_further_tim_myDist    = result_dist[i];
+      most_further_tim_hisDist    = reference_dist[i];
     }
 
 
-    if (result_dist[i] +1e-7f < reference_dist[i]) {
-      std::cout << "***** CLOSER **** for point " << i << "  : " << point_x[i] << " " << point_y[i] << " " << point_z[i]  << " " << std::endl;
-      std::cout << "   we found  " << result_x[i] << " " << result_y[i] << " " << result_z[i] << " " << " dist " << result_dist[i] << std::endl;
-      std::cout << "   reference " << reference_x[i]  << " " << reference_y[i] << " " << reference_z[i] << " " << " dist " << reference_dist[i] << std::endl;
-    }
+
+
+//     if (result_dist[i] > reference_dist[i]+1e-7f) {
+//       std::cout << "fail (vs tim) for point " << i << "  : " << point_x[i] << " " << point_y[i] << " " << point_z[i]  << " " << std::endl;
+//       std::cout << "   we found  " << result_x[i] << " " << result_y[i] << " " << result_z[i] << " " << " dist " << result_dist[i] << std::endl;
+//       std::cout << "   reference " << reference_x[i]  << " " << reference_y[i] << " " << reference_z[i] << " " << " dist " << reference_dist[i] << std::endl;
+//     }
+//     if (result_dist[i] > dennis_dist[i]+1e-7f) {
+//       std::cout << "fail (vs dennis) for point " << i << "  : " << point_x[i] << " " << point_y[i] << " " << point_z[i]  << " " << std::endl;
+//       std::cout << "   we found  " << result_x[i] << " " << result_y[i] << " " << result_z[i] << " " << " dist " << result_dist[i] << std::endl;
+//       std::cout << "   reference dist " << dennis_dist[i] << std::endl;
+//     }
+
+
+//     if (result_dist[i] +1e-7f < reference_dist[i]) {
+//       std::cout << "***** CLOSER (than tim) **** for point " << i << "  : " << point_x[i] << " " << point_y[i] << " " << point_z[i]  << " " << std::endl;
+//       std::cout << "   we found  " << result_x[i] << " " << result_y[i] << " " << result_z[i] << " " << " dist " << result_dist[i] << std::endl;
+//       std::cout << "   reference " << reference_x[i]  << " " << reference_y[i] << " " << reference_z[i] << " " << " dist " << reference_dist[i] << std::endl;
+//     }
+    
+//     if (result_dist[i] +1e-7f < dennis_dist[i]) {
+//       std::cout << "***** CLOSER (than dennis) **** for point " << i << "  : " << point_x[i] << " " << point_y[i] << " " << point_z[i]  << " " << std::endl;
+//       std::cout << "   we found  " << result_x[i] << " " << result_y[i] << " " << result_z[i] << " " << " dist " << result_dist[i] << std::endl;
+//       std::cout << "   reference dist " << dennis_dist[i] << std::endl;
+//     }
   }
-      )
+#endif
 
   rtdqDestroy(scene);
+  FILE *out = fopen("iw.xysz.txt","w");
+  for (int i=0;i<result_x.size();i++) {
+    fprintf(out,"%g %g %g %g\n",result_x[i],result_y[i],result_z[i],result_dist[i]);
+    if (result_y[i] > .13f) {
+      printf("%g %g %g %g\n",result_x[i],result_y[i],result_z[i],result_dist[i]);
+    }
+  }
+  fclose(out);
+  
+  printf("biggest dist (to tim) where we're closer: input %g %g %g ours %g %g %g dist %g his-dist %g\n",
+         most_closer_tim_input[0],
+         most_closer_tim_input[1],
+         most_closer_tim_input[2],
+         most_closer_tim_result[0],
+         most_closer_tim_result[1],
+         most_closer_tim_result[2],
+         most_closer_tim_myDist,
+         most_closer_tim_hisDist);
+  printf("biggest dist (to tim) where we're further: input %g %g %g ours %g %g %g dist %g his-dist %g\n",
+         most_further_tim_input[0],
+         most_further_tim_input[1],
+         most_further_tim_input[2],
+         most_further_tim_result[0],
+         most_further_tim_result[1],
+         most_further_tim_result[2],
+         most_further_tim_myDist,
+         most_further_tim_hisDist);
+         
+  printf("biggest dist (to dennis) where we're closer: input %g %g %g ours %g %g %g dist %g his-dist %g\n",
+         most_closer_dennis_input[0],
+         most_closer_dennis_input[1],
+         most_closer_dennis_input[2],
+         most_closer_dennis_result[0],
+         most_closer_dennis_result[1],
+         most_closer_dennis_result[2],
+         most_closer_dennis_myDist,
+         most_closer_dennis_hisDist);
+  printf("biggest dist (to dennis) where we're further: input %g %g %g ours %g %g %g dist %g his-dist %g\n",
+         most_further_dennis_input[0],
+         most_further_dennis_input[1],
+         most_further_dennis_input[2],
+         most_further_dennis_result[0],
+         most_further_dennis_result[1],
+         most_further_dennis_result[2],
+         most_further_dennis_myDist,
+         most_further_dennis_hisDist);
+         
+
 }
