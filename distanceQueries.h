@@ -63,20 +63,35 @@ extern "C" {
     both C++-style array of structs as well as fortran-suyle list of
     arrays data layouts
   */
-  void rtdqComputeClosestPoints(distance_query_scene scene,
-                                float   *out_closest_point_pos_x,
-                                float   *out_closest_point_pos_y,
-                                float   *out_closest_point_pos_z,
-                                size_t   out_closest_point_pos_stride,
-                                float   *out_closest_point_dist,
-                                size_t   out_closest_point_dist_stride,
-                                int32_t *out_closest_point_primID,
-                                size_t   out_closest_point_primID_stride,
-                                const float *in_query_point_x,
-                                const float *in_query_point_y,
-                                const float *in_query_point_z,
-                                const size_t in_query_point_stride,
-                                const size_t numQueryPoints);
+  void rtdqComputeClosestPointsfi(distance_query_scene scene,
+                                 float   *out_closest_point_pos_x,
+                                 float   *out_closest_point_pos_y,
+                                 float   *out_closest_point_pos_z,
+                                 size_t   out_closest_point_pos_stride,
+                                 float   *out_closest_point_dist,
+                                 size_t   out_closest_point_dist_stride,
+                                 int32_t *out_closest_point_primID,
+                                 size_t   out_closest_point_primID_stride,
+                                 const float *in_query_point_x,
+                                 const float *in_query_point_y,
+                                 const float *in_query_point_z,
+                                 const size_t in_query_point_stride,
+                                 const size_t numQueryPoints);
+
+  void rtdqComputeClosestPointsdi(distance_query_scene scene,
+                                 double   *out_closest_point_pos_x,
+                                 double   *out_closest_point_pos_y,
+                                 double   *out_closest_point_pos_z,
+                                 size_t   out_closest_point_pos_stride,
+                                 double   *out_closest_point_dist,
+                                 size_t   out_closest_point_dist_stride,
+                                 int32_t *out_closest_point_primID,
+                                 size_t   out_closest_point_primID_stride,
+                                 const double *in_query_point_x,
+                                 const double *in_query_point_y,
+                                 const double *in_query_point_z,
+                                 const size_t in_query_point_stride,
+                                 const size_t numQueryPoints);
   
 #ifdef __cplusplus
 }

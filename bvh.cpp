@@ -125,9 +125,6 @@ namespace bvhlib {
                                      nodeList[childID+1].upper);
         nodeList[nodeID].isLeaf   = 0;
         nodeList[nodeID].child    = childID;
-        if (nodeID < 10) {
-          PRINT((box3f&)nodeList[nodeID]);
-        }
       }
     }
   }
@@ -164,9 +161,6 @@ namespace bvhlib {
     }
     nodeList.push_back(Node());
     buildRec(0,centBounds,buildPrim.data(),primID);
-    PING;
-    PRINT((box3fa&)nodeList[0]);
-    PRINT((box3fa*)&nodeList[0]);
   }
 
 }

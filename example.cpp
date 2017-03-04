@@ -80,7 +80,7 @@ namespace embree {
     auto done_build = std::chrono::system_clock::now();
 
     // perform the queries - all together, in a single thread
-    rtdqComputeClosestPoints(scene,
+    rtdqComputeClosestPointsfi(scene,
                              &result_pos[0].x,&result_pos[0].y,&result_pos[0].z,3,
                              &result_dist[0],1,
                              &result_primID[0],1,
