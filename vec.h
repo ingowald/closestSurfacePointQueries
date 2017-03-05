@@ -91,8 +91,10 @@ namespace ospcommon {
     typedef T scalar_t;
     typedef T Scalar;
 
-    inline vec_t() = default;
-    inline vec_t(const vec_t<T,3,1> &o) = default;
+    inline vec_t() {}
+    inline vec_t(const vec_t<T,3,1> &o) : x(o.x), y(o.y), z(o.z) {}
+    // inline vec_t() = default;
+    // inline vec_t(const vec_t<T,3,1> &o) = default;
 
     inline explicit vec_t(scalar_t s) : x(s), y(s), z(s) {}
     inline vec_t(scalar_t x, scalar_t y, scalar_t z) : x(x), y(y), z(z) {}

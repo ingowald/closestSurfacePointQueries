@@ -121,7 +121,7 @@ namespace bvhlib {
                         const coord_t *vtx_y,
                         const coord_t *vtx_z,
                         const size_t   vtx_stride,
-                        const index_t *idx_x,
+                        const index_t *idx_x, 
                         const index_t *idx_y,
                         const index_t *idx_z,
                         const size_t   idx_stride,
