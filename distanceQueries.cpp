@@ -25,10 +25,6 @@
 
 namespace bvhlib {
 
-#define DBG(a) 
-
-  DBG(bool dbg = false);
-
   /*! result of a single closest-point query */
   struct QueryResult {
     
@@ -42,11 +38,11 @@ namespace bvhlib {
     int32_t primID;
   };
 
-  inline float computeDistance(const box3fa &box, const vec3fa &P)
+  inline float computeDistance(const BVH::Node *node, const vec3fa &P)
   {
-#if 1
-    const __m128 lo = (__m128&)box.lower;
-    const __m128 hi = (__m128&)box.upper;
+#if 0
+    const __m128 lo = (__m128&)node->lower;
+    const __m128 hi = (__m128&)node->upper;
     const __m128 p  = (__m128&)P;
     const __m128 pp = _mm_min_ps(_mm_max_ps(p,lo),hi);
     const __m128 d  = _mm_sub_ps(pp,p);
@@ -56,15 +52,9 @@ namespace bvhlib {
     const float zz = _mm_extract_ps(dd,2);
     return sqrtf(xx+yy+zz);
 #else
-    const vec3fa Pclamped = min(max(P,box.lower),box.upper);
-    return length(P-Pclamped);
-#endif
-  }
-
-  inline float computeDistance(const BVH::Node *node, const vec3fa &P)
-  {
     const vec3fa Pclamped = min(max(P,(const vec3fa&)node->lower),(const vec3fa&)node->upper);
     return length(P-Pclamped);
+#endif
   }
   
   inline vec3fa projectToEdge(const vec3fa &P, const vec3fa &v0, const vec3fa &e0)
