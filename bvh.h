@@ -52,21 +52,15 @@ namespace bvhlib {
   {
     inline vec3fa center() const { return 0.5f*(lower+upper); }
   };
-    
-  //   inline BuildPrim() {};
-  //   inline box3fa &asBox() { return (box3fa&)*this; }
-    
-  //   vec3f    lower;
-  //   uint32_t geomID;
-  //   vec3f    upper;
-  //   uint32_t primID;
-  // };
-  
+
+  /*! abstraction of a geometric object that can multiple primitmives */
   struct Geometry {
     virtual size_t numPrimitives() const = 0;
     virtual void   initBuildPrim(BuildPrim &bp, const size_t primID) const = 0;
   };
-  
+
+  /*! a binary, axis-aligned bounding box based, bounding volume
+      hierarchy */
   struct BVH {
     struct Node {
       vec3f    lower;
@@ -83,7 +77,6 @@ namespace bvhlib {
                   const BuildPrim *buildPrim,
                   std::vector<size_t> &primID);
         
-    std::vector<size_t> childList;
     std::vector<Node>   nodeList;
     Mutex               mutex;
   };

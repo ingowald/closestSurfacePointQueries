@@ -42,10 +42,23 @@ namespace bvhlib {
     int32_t primID;
   };
 
-  inline float computeDistance(box3fa &box, const vec3fa &P)
+  inline float computeDistance(const box3fa &box, const vec3fa &P)
   {
-    const vec3fa Pclamped = min(max(P,(box.lower)),(box.upper));
+#if 1
+    const __m128 lo = (__m128&)box.lower;
+    const __m128 hi = (__m128&)box.upper;
+    const __m128 p  = (__m128&)P;
+    const __m128 pp = _mm_min_ps(_mm_max_ps(p,lo),hi);
+    const __m128 d  = _mm_sub_ps(pp,p);
+    const __m128 dd = _mm_mul_ps(d,d);
+    const float xx = _mm_extract_ps(dd,0);
+    const float yy = _mm_extract_ps(dd,1);
+    const float zz = _mm_extract_ps(dd,2);
+    return sqrtf(xx+yy+zz);
+#else
+    const vec3fa Pclamped = min(max(P,box.lower),box.upper);
     return length(P-Pclamped);
+#endif
   }
 
   inline float computeDistance(const BVH::Node *node, const vec3fa &P)
@@ -54,14 +67,6 @@ namespace bvhlib {
     return length(P-Pclamped);
   }
   
-
-  inline float clamp01(const float a, float b)
-  {
-    if (fabsf(b) < 1e-12f) b = 1e-12f;
-    float f = a / b;
-    return std::min(std::max(f,0.f),1.f);
-  }
-
   inline vec3fa projectToEdge(const vec3fa &P, const vec3fa &v0, const vec3fa &e0)
   {
 #if 0
