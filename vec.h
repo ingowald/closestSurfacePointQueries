@@ -360,11 +360,11 @@ namespace ospcommon {
   // -------------------------------------------------------
   // cross product
   // -------------------------------------------------------
-  template<typename T, int A, int B> inline vec_t<T,3> cross(const vec_t<T,3,A> &a, 
-                                                             const vec_t<T,3,B> &b)
-  { return vec_t<T,3>(a.y*b.z-a.z*b.y,
-                      a.z*b.x-a.x*b.z,
-                      a.x*b.y-a.y*b.x); }
+  template<typename T, int A, int B> inline vec_t<T,3,A|B> cross(const vec_t<T,3,A> &a, 
+                                                                 const vec_t<T,3,B> &b)
+  { return vec_t<T,3,A|B>(a.y*b.z-a.z*b.y,
+                          a.z*b.x-a.x*b.z,
+                          a.x*b.y-a.y*b.x); }
 
   // -------------------------------------------------------
   // normalize()
