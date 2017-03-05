@@ -20,9 +20,7 @@ aosExample: aosExample.cpp libbvhdq.so
 soaExample: soaExample.cpp libbvhdq.so
 	icpc -o $@ $<  -std=c++11 ${OPENMP} -L. -lbvhdq 
 
-benchmark.o: benchmark.cpp
-
-benchmark: benchmark.o
+benchmark: benchmark.cpp libbvhdq.so
 	icpc -o $@ $<  -std=c++11 ${OPENMP} -L. -lbvhdq
 
 clean:

@@ -62,11 +62,15 @@ namespace bvhlib {
     return std::min(std::max(f,0.f),1.f);
   }
 
-  inline vec3fa projectToEdge(const vec3fa &P, const vec3fa &A, const vec3fa &B)
+  inline vec3fa projectToEdge(const vec3fa &P, const vec3fa &v0, const vec3fa &e0)
   {
-    float f = dot(P-A,B-A) / (double)dot(B-A,B-A);
+#if 0
+    float f = dot(P-v0,e0) / dot(e0,e0);
+#else
+    float f = dot(P-v0,e0) / (double)dot(e0,e0);
+#endif
     f = std::max(0.f,std::min(1.f,f));
-    return A+f*(B-A);
+    return v0+f*e0;
   }
 
   inline vec3fa projectToPlane(float &dist, const vec3fa &P, const vec3fa &N, const vec3fa &A)
@@ -78,19 +82,14 @@ namespace bvhlib {
 
   inline void checkEdge(vec3fa &closestPoint, float &closestDist,
                         const vec3fa &queryPoint,
-                        const vec3fa &v0, const vec3fa &v1)
+                        const vec3fa &v0, const vec3fa &e0)
   {
-    const vec3fa PP = projectToEdge(queryPoint,v0,v1);
+    const vec3fa PP = projectToEdge(queryPoint,v0,e0);
     const float dist = length(PP-queryPoint);
-    DBG(if (dbg) { 
-        PRINT(v0);
-        PRINT(v1);
-        PRINT(PP);
-      })
-      if (dist < closestDist) {
-        closestDist = dist;
-        closestPoint = PP;
-      }
+    if (dist < closestDist) {
+      closestDist = dist;
+      closestPoint = PP;
+    }
   }
 
 
@@ -131,7 +130,6 @@ namespace bvhlib {
     virtual ~GeneralTriangleMesh()
     { /* nothing to do - we don't own any of the arrays, so nothing to free */ }
 
-
     /*! get a triangle's vertices to operate on, hiding thinke like addressing */
     inline Triangle getTriangle(const size_t primID) const;
     
@@ -163,14 +161,14 @@ namespace bvhlib {
 
   template<typename coord_t, typename index_t, bool has_strides>
   GeneralTriangleMesh<coord_t,index_t,has_strides>::GeneralTriangleMesh(const coord_t *vtx_x,
-                                                            const coord_t *vtx_y,
-                                                            const coord_t *vtx_z,
-                                                            const size_t   vtx_stride,
-                                                            const index_t *idx_x,
-                                                            const index_t *idx_y,
-                                                            const index_t *idx_z,
-                                                            const size_t   idx_stride,
-                                                            const size_t   numTriangles)
+                                                                        const coord_t *vtx_y,
+                                                                        const coord_t *vtx_z,
+                                                                        const size_t   vtx_stride,
+                                                                        const index_t *idx_x,
+                                                                        const index_t *idx_y,
+                                                                        const index_t *idx_z,
+                                                                        const size_t   idx_stride,
+                                                                        const size_t   numTriangles)
   : vtx_x(vtx_x),
     vtx_y(vtx_y),
     vtx_z(vtx_z),
@@ -190,33 +188,33 @@ namespace bvhlib {
   {
     Triangle t;
     if (has_strides) {
-    const size_t i0 = this->idx_x[primID*idx_stride];
-    const size_t i1 = this->idx_y[primID*idx_stride];
-    const size_t i2 = this->idx_z[primID*idx_stride];
+      const size_t i0 = this->idx_x[primID*idx_stride];
+      const size_t i1 = this->idx_y[primID*idx_stride];
+      const size_t i2 = this->idx_z[primID*idx_stride];
     
-    t.v0 = vec3fa(this->vtx_x[i0*vtx_stride],
-                  this->vtx_y[i0*vtx_stride],
-                  this->vtx_z[i0*vtx_stride]);
-    t.v1 = vec3fa(this->vtx_x[i1*vtx_stride],
-                  this->vtx_y[i1*vtx_stride],
-                  this->vtx_z[i1*vtx_stride]);
-    t.v2 = vec3fa(this->vtx_x[i2*vtx_stride],
-                  this->vtx_y[i2*vtx_stride],
-                  this->vtx_z[i2*vtx_stride]);
+      t.v0 = vec3fa(this->vtx_x[i0*vtx_stride],
+                    this->vtx_y[i0*vtx_stride],
+                    this->vtx_z[i0*vtx_stride]);
+      t.v1 = vec3fa(this->vtx_x[i1*vtx_stride],
+                    this->vtx_y[i1*vtx_stride],
+                    this->vtx_z[i1*vtx_stride]);
+      t.v2 = vec3fa(this->vtx_x[i2*vtx_stride],
+                    this->vtx_y[i2*vtx_stride],
+                    this->vtx_z[i2*vtx_stride]);
     } else {
-    const size_t i0 = this->idx_x[primID];
-    const size_t i1 = this->idx_y[primID];
-    const size_t i2 = this->idx_z[primID];
+      const size_t i0 = this->idx_x[primID];
+      const size_t i1 = this->idx_y[primID];
+      const size_t i2 = this->idx_z[primID];
     
-    t.v0 = vec3fa(this->vtx_x[i0],
-                  this->vtx_y[i0],
-                  this->vtx_z[i0]);
-    t.v1 = vec3fa(this->vtx_x[i1],
-                  this->vtx_y[i1],
-                  this->vtx_z[i1]);
-    t.v2 = vec3fa(this->vtx_x[i2],
-                  this->vtx_y[i2],
-                  this->vtx_z[i2]);
+      t.v0 = vec3fa(this->vtx_x[i0],
+                    this->vtx_y[i0],
+                    this->vtx_z[i0]);
+      t.v1 = vec3fa(this->vtx_x[i1],
+                    this->vtx_y[i1],
+                    this->vtx_z[i1]);
+      t.v2 = vec3fa(this->vtx_x[i2],
+                    this->vtx_y[i2],
+                    this->vtx_z[i2]);
     }
     return t;
   }
@@ -229,31 +227,31 @@ namespace bvhlib {
                               const size_t primID)
   {
     const Triangle tri = getTriangle(primID);
-    const vec3fa &A = tri.v0;
-    const vec3fa &B = tri.v1;
-    const vec3fa &C = tri.v2;
 
-    const vec3fa N = (cross(B-A,C-A));
-    const vec3fa Na = (cross(N,C-B));
-    const vec3fa Nb = (cross(N,A-C));
-    const vec3fa Nc = (cross(N,B-A));
+    const vec3fa e0 = tri.v1-tri.v0;
+    const vec3fa e1 = tri.v2-tri.v1;
+    const vec3fa e2 = tri.v0-tri.v2;
+    const vec3fa N  = cross(e2,e0);
+    const vec3fa Na = cross(N,e1);
+    const vec3fa Nb = cross(N,e2);
+    const vec3fa Nc = cross(N,e0);
     
-    const float a = dot(queryPoint-B,Na);
-    const float b = dot(queryPoint-C,Nb);
-    const float c = dot(queryPoint-A,Nc);
+    const float a = dot(queryPoint-tri.v1,Na);
+    const float b = dot(queryPoint-tri.v2,Nb);
+    const float c = dot(queryPoint-tri.v0,Nc);
       
     vec3fa closestPoint;
     float closestDist;
     if (std::min(std::min(a,b),c) >= 0.f)
-      closestPoint = projectToPlane(closestDist,queryPoint,N,A);
+      closestPoint = projectToPlane(closestDist,queryPoint,N,tri.v0);
     else {
       closestDist = std::numeric_limits<float>::infinity();
       if (a <= 0.f) 
-        checkEdge(closestPoint,closestDist,queryPoint,B,C);
+        checkEdge(closestPoint,closestDist,queryPoint,tri.v1,e1);
       if (b <= 0.f) 
-        checkEdge(closestPoint,closestDist,queryPoint,C,A);
+        checkEdge(closestPoint,closestDist,queryPoint,tri.v2,e2);
       if (c <= 0.f) 
-        checkEdge(closestPoint,closestDist,queryPoint,A,B);
+        checkEdge(closestPoint,closestDist,queryPoint,tri.v0,e0);
     }
       
     if (closestDist >= result.distance) return;
@@ -417,8 +415,8 @@ namespace bvhlib {
     for (size_t i=0;i<numQueryPoints;i++) {
       QueryResult qr;
       oneQuery(qr,qo,vec3fa(in_query_point_x[i*in_query_point_stride],
-                           in_query_point_y[i*in_query_point_stride],
-                           in_query_point_z[i*in_query_point_stride]));
+                            in_query_point_y[i*in_query_point_stride],
+                            in_query_point_z[i*in_query_point_stride]));
       if (out_closest_point_pos_x)
         out_closest_point_pos_x[i*out_closest_point_pos_stride] = qr.point.x;
       if (out_closest_point_pos_y)
@@ -454,8 +452,8 @@ namespace bvhlib {
 
     for (size_t qpi=0;qpi<numQueryPoints;qpi++) {
       const vec3fa queryPoint(in_query_point_x[qpi*in_query_point_stride],
-                             in_query_point_y[qpi*in_query_point_stride],
-                             in_query_point_z[qpi*in_query_point_stride]);
+                              in_query_point_y[qpi*in_query_point_stride],
+                              in_query_point_z[qpi*in_query_point_stride]);
       
       QueryResult qr;
       oneQuery(qr,qo,queryPoint);
