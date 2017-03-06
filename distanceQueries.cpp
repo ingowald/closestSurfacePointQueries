@@ -423,7 +423,7 @@ namespace bvhlib {
     }
   }
   
-#define CACHE_LAST_RESULT 1
+#define CACHE_LAST_RESULT 0
 
   extern "C"
   void rtdqComputeClosestPointsfi(distance_query_scene scene,
