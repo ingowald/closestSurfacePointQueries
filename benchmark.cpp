@@ -143,9 +143,17 @@ int main(int ac, char **av)
 
   loadTriangles(dir+"/triang_input.txt");
   loadPoints(dir+"/point_input.txt");
-//   loadReference(dir+"/dennis.dist.txt");
-//   loadReference(dir+"/tim.xyzs.txt");
-//   loadDennis(dir+"/dennis.dist.txt");
+
+  bool couldLoadReference = true;
+  try {
+//     loadReference(dir+"/dennis.dist.txt");
+    loadReference(dir+"/tim.xyzs.txt");
+    loadDennis(dir+"/dennis.dist.txt");
+  } catch (std::runtime_error e) {
+    couldLoadReference = false;
+    printf("********************** could NOT load reference results **********************\n");
+  }
+
   
   auto begin = std::chrono::system_clock::now();
   std::cout << "creating embree query object" << std::endl;
@@ -186,8 +194,7 @@ int main(int ac, char **av)
   std::cout << "time to query " << numPoints << " points: " << queryTime.count() << "s" << std::endl;
   std::cout << "(this is " << (1000000.f * queryTime.count()/numPoints) << " micro seconds/query)" << std::endl;
 
-#if 0
-
+  if (couldLoadReference) {
   double most_further_tim_mag = 0.f;
   double most_further_tim_myDist;
   double most_further_tim_hisDist;
@@ -312,7 +319,6 @@ int main(int ac, char **av)
          most_further_dennis_myDist,
          most_further_dennis_hisDist);
          
-#endif
-
+  }
   rtdqDestroy(scene);
 }

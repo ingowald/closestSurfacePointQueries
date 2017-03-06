@@ -38,19 +38,29 @@ namespace bvhlib {
     int32_t primID;
   };
 
+  inline std::ostream &operator<<(std::ostream &o, const __m128 &v)
+  {
+    float *f = (float*)&v;
+    o << "{" << f[0] << "," << f[1] << "," << f[2] << "," << f[3] << "}";
+    return o;
+  }
+
   inline float computeDistance(const BVH::Node *node, const vec3fa &P)
   {
 #if 0
+    // vectorized version - but doesn't cost enough to actually gain anything :-(
     const __m128 lo = (__m128&)node->lower;
     const __m128 hi = (__m128&)node->upper;
     const __m128 p  = (__m128&)P;
     const __m128 pp = _mm_min_ps(_mm_max_ps(p,lo),hi);
     const __m128 d  = _mm_sub_ps(pp,p);
     const __m128 dd = _mm_mul_ps(d,d);
-    const float xx = _mm_extract_ps(dd,0);
-    const float yy = _mm_extract_ps(dd,1);
-    const float zz = _mm_extract_ps(dd,2);
-    return sqrtf(xx+yy+zz);
+    float xx,yy,zz;
+    (int&)xx = _mm_extract_ps(dd,0);
+    (int&)yy = _mm_extract_ps(dd,1);
+    (int&)zz = _mm_extract_ps(dd,2);
+    const float vec = sqrtf(xx+yy+zz);
+    return vec;
 #else
     const vec3fa Pclamped = min(max(P,(const vec3fa&)node->lower),(const vec3fa&)node->upper);
     return length(P-Pclamped);
@@ -59,10 +69,13 @@ namespace bvhlib {
   
   inline vec3fa projectToEdge(const vec3fa &P, const vec3fa &v0, const vec3fa &e0)
   {
+    const float den = dot(e0,e0);
+    if (den == 0.f) return v0;
+
 #if 0
-    float f = dot(P-v0,e0) / dot(e0,e0);
+    float f = dot(P-v0,e0) / den;
 #else
-    float f = dot(P-v0,e0) / (double)dot(e0,e0);
+    float f = dot(P-v0,e0) / (double)den;
 #endif
     f = std::max(0.f,std::min(1.f,f));
     return v0+f*e0;
@@ -70,9 +83,16 @@ namespace bvhlib {
 
   inline vec3fa projectToPlane(float &dist, const vec3fa &P, const vec3fa &N, const vec3fa &A)
   {
-    const vec3fa PP = P - float((dot(P-A,N)/(double)dot(N,N))) * N;
-    dist = length(PP-P);
-    return PP;
+    const float den = dot(N,N);
+    if (den == 0.f) {
+      const vec3fa PP = A;
+      dist = length(PP-P);
+      return PP;
+    } else {
+      const vec3fa PP = P - float((dot(P-A,N)/(double)den)) * N;
+      dist = length(PP-P);
+      return PP;
+    }
   }
 
   inline void checkEdge(vec3fa &closestPoint, float &closestDist,
@@ -227,6 +247,16 @@ namespace bvhlib {
     const vec3fa e1 = tri.v2-tri.v1;
     const vec3fa e2 = tri.v0-tri.v2;
     const vec3fa N  = cross(e2,e0);
+
+    if (dot(N,N) <= 1e-12f) {
+      PING;
+      PRINT(e0);
+      PRINT(e1);
+      PRINT(e2);
+      PRINT(N);
+    }
+
+
     const vec3fa Na = cross(N,e1);
     const vec3fa Nb = cross(N,e2);
     const vec3fa Nc = cross(N,e0);
@@ -319,9 +349,6 @@ namespace bvhlib {
                 QueryObject *qo,
                 const vec3fa &point)
   {
-    result.distance = std::numeric_limits<float>::infinity();
-    result.primID   = -1;
-  
     std::priority_queue<std::pair<float,const BVH::Node *>,
                         std::vector<std::pair<float,const BVH::Node *>>,
                         std::greater<std::pair<float,const BVH::Node *>>
@@ -333,7 +360,7 @@ namespace bvhlib {
     
     const std::vector<BVH::Node> &nodeList = qo->bvh.nodeList;
     const BVH::Node *node = &nodeList[0];
-    while (1) {
+    while (node) {
       if (!node->isLeaf) {
         // this is a inner node ...
         const BVH::Node *const child0 = &nodeList[node->child+0];
@@ -383,10 +410,21 @@ namespace bvhlib {
 
       // closest candidate might be closer: pop it and use it
       node = traversalQueue.top().second;
+
+
+      if (node == NULL) {
+        PING;
+        PRINT(node);
+        PRINT(result.distance);
+        PRINT(traversalQueue.top().first);
+      }
+
       traversalQueue.pop();
     }
   }
   
+#define CACHE_LAST_RESULT 1
+
   extern "C"
   void rtdqComputeClosestPointsfi(distance_query_scene scene,
                                   float   *out_closest_point_pos_x,
@@ -407,21 +445,36 @@ namespace bvhlib {
     if (!qo)
       return;
 
-    for (size_t i=0;i<numQueryPoints;i++) {
+#if CACHE_LAST_RESULT
+    vec3f lastPoint;
+#endif
+    for (size_t qpi=0;qpi<numQueryPoints;qpi++) {
+      const vec3fa queryPoint(in_query_point_x[qpi*in_query_point_stride],
+                              in_query_point_y[qpi*in_query_point_stride],
+                              in_query_point_z[qpi*in_query_point_stride]);
+
       QueryResult qr;
-      oneQuery(qr,qo,vec3fa(in_query_point_x[i*in_query_point_stride],
-                            in_query_point_y[i*in_query_point_stride],
-                            in_query_point_z[i*in_query_point_stride]));
+      qr.distance = std::numeric_limits<float>::infinity();
+      qr.primID   = -1;
+#if CACHE_LAST_RESULT
+      if (qpi > 0) {
+        qr.distance = length(queryPoint-lastPoint)*(((1<<22)+1)/float(1<<22));
+      }
+#endif
+      oneQuery(qr,qo,queryPoint);
+#if CACHE_LAST_RESULT
+      lastPoint = qr.point;
+#endif
       if (out_closest_point_pos_x)
-        out_closest_point_pos_x[i*out_closest_point_pos_stride] = qr.point.x;
+        out_closest_point_pos_x[qpi*out_closest_point_pos_stride] = qr.point.x;
       if (out_closest_point_pos_y)
-        out_closest_point_pos_y[i*out_closest_point_pos_stride] = qr.point.y;
+        out_closest_point_pos_y[qpi*out_closest_point_pos_stride] = qr.point.y;
       if (out_closest_point_pos_z)
-        out_closest_point_pos_z[i*out_closest_point_pos_stride] = qr.point.z;
+        out_closest_point_pos_z[qpi*out_closest_point_pos_stride] = qr.point.z;
       if (out_closest_point_primID)
-        out_closest_point_primID[i*out_closest_point_primID_stride] = qr.primID;
+        out_closest_point_primID[qpi*out_closest_point_primID_stride] = qr.primID;
       if (out_closest_point_dist)
-        out_closest_point_dist[i*out_closest_point_dist_stride] = qr.distance;
+        out_closest_point_dist[qpi*out_closest_point_dist_stride] = qr.distance;
     }
   }
   
@@ -444,7 +497,6 @@ namespace bvhlib {
     QueryObject *qo = (QueryObject *)scene;
     if (!qo)
       return; 
-#define CACHE_LAST_RESULT 1
 
 #if CACHE_LAST_RESULT
     vec3f lastPoint;
@@ -455,6 +507,9 @@ namespace bvhlib {
                               in_query_point_z[qpi*in_query_point_stride]);
       
       QueryResult qr;
+      qr.distance = std::numeric_limits<float>::infinity();
+      qr.primID   = -1;
+  
 #if CACHE_LAST_RESULT
       if (qpi > 0) {
         qr.distance = length(queryPoint-lastPoint)*(((1<<22)+1)/float(1<<22));
