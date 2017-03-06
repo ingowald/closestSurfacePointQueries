@@ -444,7 +444,7 @@ namespace bvhlib {
     QueryObject *qo = (QueryObject *)scene;
     if (!qo)
       return; 
-#define CACHE_LAST_RESULT 0
+#define CACHE_LAST_RESULT 1
 
 #if CACHE_LAST_RESULT
     vec3f lastPoint;
@@ -457,7 +457,7 @@ namespace bvhlib {
       QueryResult qr;
 #if CACHE_LAST_RESULT
       if (qpi > 0) {
-        qr.distance = length(qr.distance-lastPoint)*(((1<<22)+1)/float(1<<22));
+        qr.distance = length(queryPoint-lastPoint)*(((1<<22)+1)/float(1<<22));
       }
 #endif
       oneQuery(qr,qo,queryPoint);
