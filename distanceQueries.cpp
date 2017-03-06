@@ -443,15 +443,27 @@ namespace bvhlib {
   {
     QueryObject *qo = (QueryObject *)scene;
     if (!qo)
-      return;
+      return; 
+#define CACHE_LAST_RESULT 0
 
+#if CACHE_LAST_RESULT
+    vec3f lastPoint;
+#endif
     for (size_t qpi=0;qpi<numQueryPoints;qpi++) {
       const vec3fa queryPoint(in_query_point_x[qpi*in_query_point_stride],
                               in_query_point_y[qpi*in_query_point_stride],
                               in_query_point_z[qpi*in_query_point_stride]);
       
       QueryResult qr;
+#if CACHE_LAST_RESULT
+      if (qpi > 0) {
+        qr.distance = length(qr.distance-lastPoint)*(((1<<22)+1)/float(1<<22));
+      }
+#endif
       oneQuery(qr,qo,queryPoint);
+#if CACHE_LAST_RESULT
+      lastPoint = qr.point;
+#endif
       
       if (out_closest_point_pos_x)
         out_closest_point_pos_x[qpi*out_closest_point_pos_stride] = qr.point.x;

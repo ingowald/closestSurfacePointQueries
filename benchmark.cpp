@@ -144,8 +144,8 @@ int main(int ac, char **av)
   loadTriangles(dir+"/triang_input.txt");
   loadPoints(dir+"/point_input.txt");
 //   loadReference(dir+"/dennis.dist.txt");
-  loadReference(dir+"/tim.xyzs.txt");
-  loadDennis(dir+"/dennis.dist.txt");
+//   loadReference(dir+"/tim.xyzs.txt");
+//   loadDennis(dir+"/dennis.dist.txt");
   
   auto begin = std::chrono::system_clock::now();
   std::cout << "creating embree query object" << std::endl;
@@ -159,28 +159,6 @@ int main(int ac, char **av)
   result_x.resize(point_x.size());
   result_y.resize(point_x.size());
   result_z.resize(point_x.size());
-
-
-//   std::cout << "computing closest _VERTEX_ to query point 0" << std::endl;
-//   float qpx = point_x[30];
-//   float qpy = point_y[30];
-//   float qpz = point_z[30];
-//   float closestDist = 1000;
-//   printf("query point %f %f %f\n",qpx,qpy,qpz);
-//   for (int i=0;i<numVertices;i++) {
-//     float px = vertex_x[i];
-//     float py = vertex_y[i];
-//     float pz = vertex_z[i];
-//     float dx=qpx-px;
-//     float dy=qpy-py;
-//     float dz=qpz-pz;
-
-//     float dist = sqrtf(dx*dx+dy*dy+dz*dz);
-//     if (dist < closestDist) {
-//       closestDist = dist;
-//       printf("**** point %f %f %f dist %f, idx %i\n",px,py,pz,dist,i);
-//     }
-//   }
 
   std::cout << "calling query (scalar)" << std::endl;
   rtdqComputeClosestPointsdi(scene,
@@ -208,7 +186,7 @@ int main(int ac, char **av)
   std::cout << "time to query " << numPoints << " points: " << queryTime.count() << "s" << std::endl;
   std::cout << "(this is " << (1000000.f * queryTime.count()/numPoints) << " micro seconds/query)" << std::endl;
 
-#if 1
+#if 0
 
   double most_further_tim_mag = 0.f;
   double most_further_tim_myDist;
@@ -295,44 +273,7 @@ int main(int ac, char **av)
     }
 
 
-
-
-//     if (result_dist[i] > reference_dist[i]+1e-7f) {
-//       std::cout << "fail (vs tim) for point " << i << "  : " << point_x[i] << " " << point_y[i] << " " << point_z[i]  << " " << std::endl;
-//       std::cout << "   we found  " << result_x[i] << " " << result_y[i] << " " << result_z[i] << " " << " dist " << result_dist[i] << std::endl;
-//       std::cout << "   reference " << reference_x[i]  << " " << reference_y[i] << " " << reference_z[i] << " " << " dist " << reference_dist[i] << std::endl;
-//     }
-//     if (result_dist[i] > dennis_dist[i]+1e-7f) {
-//       std::cout << "fail (vs dennis) for point " << i << "  : " << point_x[i] << " " << point_y[i] << " " << point_z[i]  << " " << std::endl;
-//       std::cout << "   we found  " << result_x[i] << " " << result_y[i] << " " << result_z[i] << " " << " dist " << result_dist[i] << std::endl;
-//       std::cout << "   reference dist " << dennis_dist[i] << std::endl;
-//     }
-
-
-//     if (result_dist[i] +1e-7f < reference_dist[i]) {
-//       std::cout << "***** CLOSER (than tim) **** for point " << i << "  : " << point_x[i] << " " << point_y[i] << " " << point_z[i]  << " " << std::endl;
-//       std::cout << "   we found  " << result_x[i] << " " << result_y[i] << " " << result_z[i] << " " << " dist " << result_dist[i] << std::endl;
-//       std::cout << "   reference " << reference_x[i]  << " " << reference_y[i] << " " << reference_z[i] << " " << " dist " << reference_dist[i] << std::endl;
-//     }
-    
-//     if (result_dist[i] +1e-7f < dennis_dist[i]) {
-//       std::cout << "***** CLOSER (than dennis) **** for point " << i << "  : " << point_x[i] << " " << point_y[i] << " " << point_z[i]  << " " << std::endl;
-//       std::cout << "   we found  " << result_x[i] << " " << result_y[i] << " " << result_z[i] << " " << " dist " << result_dist[i] << std::endl;
-//       std::cout << "   reference dist " << dennis_dist[i] << std::endl;
-//     }
   }
-#endif
-
-  rtdqDestroy(scene);
-  FILE *out = fopen("iw.xysz.txt","w");
-  for (int i=0;i<result_x.size();i++) {
-    fprintf(out,"%g %g %g %g\n",result_x[i],result_y[i],result_z[i],result_dist[i]);
-    if (result_y[i] > .13f) {
-      printf("%g %g %g %g\n",result_x[i],result_y[i],result_z[i],result_dist[i]);
-    }
-  }
-  fclose(out);
-  
   printf("biggest dist (to tim) where we're closer: input %g %g %g ours %g %g %g dist %g his-dist %g\n",
          most_closer_tim_input[0],
          most_closer_tim_input[1],
@@ -371,5 +312,7 @@ int main(int ac, char **av)
          most_further_dennis_myDist,
          most_further_dennis_hisDist);
          
+#endif
 
+  rtdqDestroy(scene);
 }

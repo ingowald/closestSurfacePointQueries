@@ -4,8 +4,8 @@ all: aosExample soaExample benchmark
 OPENMP=-openmp -DUSE_OPENMP=1
 
 CXX=icpc
-CXXFLAGS= -O3 -march=native -g -no-inline-max-total-size -inline-factor=1000 -DNDEBUG -restrict -std=c++11 -fPIC ${OPENMP}
-#CXXFLAGS=-static-libstdc++ -O3 -xAVX -g -no-inline-max-total-size -inline-factor=1000 -DNDEBUG -restrict -std=c++11 -fPIC -openmp
+CXXFLAGS= -O3 -march=native -g -no-inline-max-total-size -inline-factor=1000 -DNDEBUG -restrict -std=c++11 -fPIC
+# ${OPENMP}
 
 bvh.o: bvh.cpp bvh.h distanceQueries.h
 
