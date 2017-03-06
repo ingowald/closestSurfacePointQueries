@@ -1,4 +1,4 @@
-#include "distanceQueries.h"
+#include "../src/distanceQueries.h"
 #include <stdexcept>
 #include <stdio.h>
 #include <stdlib.h>

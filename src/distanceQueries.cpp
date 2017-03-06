@@ -248,15 +248,6 @@ namespace bvhlib {
     const vec3fa e2 = tri.v0-tri.v2;
     const vec3fa N  = cross(e2,e0);
 
-    if (dot(N,N) <= 1e-12f) {
-      PING;
-      PRINT(e0);
-      PRINT(e1);
-      PRINT(e2);
-      PRINT(N);
-    }
-
-
     const vec3fa Na = cross(N,e1);
     const vec3fa Nb = cross(N,e2);
     const vec3fa Nc = cross(N,e0);

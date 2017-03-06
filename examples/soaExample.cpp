@@ -14,8 +14,8 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "distanceQueries.h"
-#include "vec.h"
+#include "../src/distanceQueries.h"
+#include "../src/vec.h"
 
 #include <vector>
 #include <chrono>
