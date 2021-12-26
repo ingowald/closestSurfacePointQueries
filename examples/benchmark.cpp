@@ -46,7 +46,9 @@ void loadTriangles(const std::string &fileName)
     throw std::runtime_error("could not parse num vertices/num trianlges from "+fileName);
   std::cout << "num vertices " << numVertices << std::endl;
   std::cout << "num triangles " << numTriangles << std::endl;
-  fgets(line,1000,file);
+  char *_res = fgets(line,1000,file);
+  if (!_res)
+    throw std::runtime_error("could not read from file...");
 
   double x,y,z;
   int ID,i,j,k;
