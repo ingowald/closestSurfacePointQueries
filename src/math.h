@@ -30,9 +30,12 @@ namespace std
   __forceinline bool isfinite (const float x) { return _finite(x); }
 }
 #endif
-#else
+#endif
+#if !defined(__arm64__)
 # include <emmintrin.h>
 # include <xmmintrin.h>
+#else
+typedef float __m128 __attribute__((__vector_size__(16), __aligned__(16)));
 #endif
 
 namespace ospcommon
@@ -56,29 +59,29 @@ namespace ospcommon
   __forceinline float sign ( const float x ) { return x<0?-1.0f:1.0f; }
   __forceinline float sqr  ( const float x ) { return x*x; }
 
-  __forceinline float rcp  ( const float x ) 
-  {
-    const __m128 a = _mm_set_ss(x);
-    const __m128 r = _mm_rcp_ps(a);
-    return _mm_cvtss_f32(_mm_mul_ps(r,_mm_sub_ps(_mm_set_ss(2.0f), _mm_mul_ps(r, a))));
-  }
+  // __forceinline float rcp  ( const float x ) 
+  // {
+  //   const __m128 a = _mm_set_ss(x);
+  //   const __m128 r = _mm_rcp_ps(a);
+  //   return _mm_cvtss_f32(_mm_mul_ps(r,_mm_sub_ps(_mm_set_ss(2.0f), _mm_mul_ps(r, a))));
+  // }
 
-  __forceinline float signmsk ( const float x ) { 
-    return _mm_cvtss_f32(_mm_and_ps(_mm_set_ss(x),_mm_castsi128_ps(_mm_set1_epi32(0x80000000))));
-  }
-  __forceinline float xorf( const float x, const float y ) { 
-    return _mm_cvtss_f32(_mm_xor_ps(_mm_set_ss(x),_mm_set_ss(y)));
-  }
-  __forceinline float andf( const float x, const unsigned y ) { 
-    return _mm_cvtss_f32(_mm_and_ps(_mm_set_ss(x),_mm_castsi128_ps(_mm_set1_epi32(y))));
-  }
-  __forceinline float rsqrt( const float x ) { 
-    const __m128 a = _mm_set_ss(x);
-    const __m128 r = _mm_rsqrt_ps(a);
-    const __m128 c = _mm_add_ps(_mm_mul_ps(_mm_set_ps1(1.5f), r),
-                                _mm_mul_ps(_mm_mul_ps(_mm_mul_ps(a, _mm_set_ps1(-0.5f)), r), _mm_mul_ps(r, r)));
-    return _mm_cvtss_f32(c);
-  }
+  // __forceinline float signmsk ( const float x ) { 
+  //   return _mm_cvtss_f32(_mm_and_ps(_mm_set_ss(x),_mm_castsi128_ps(_mm_set1_epi32(0x80000000))));
+  // }
+  // __forceinline float xorf( const float x, const float y ) { 
+  //   return _mm_cvtss_f32(_mm_xor_ps(_mm_set_ss(x),_mm_set_ss(y)));
+  // }
+  // __forceinline float andf( const float x, const unsigned y ) { 
+  //   return _mm_cvtss_f32(_mm_and_ps(_mm_set_ss(x),_mm_castsi128_ps(_mm_set1_epi32(y))));
+  // }
+  // __forceinline float rsqrt( const float x ) { 
+  //   const __m128 a = _mm_set_ss(x);
+  //   const __m128 r = _mm_rsqrt_ps(a);
+  //   const __m128 c = _mm_add_ps(_mm_mul_ps(_mm_set_ps1(1.5f), r),
+  //                               _mm_mul_ps(_mm_mul_ps(_mm_mul_ps(a, _mm_set_ps1(-0.5f)), r), _mm_mul_ps(r, r)));
+  //   return _mm_cvtss_f32(c);
+  // }
 
 #ifndef _WIN32
   __forceinline float abs  ( const float x ) { return ::fabsf(x); }
@@ -93,6 +96,8 @@ namespace ospcommon
   __forceinline float log  ( const float x ) { return ::logf  (x); }
   __forceinline float log10( const float x ) { return ::log10f(x); }
   __forceinline float pow  ( const float x, const float y ) { return ::powf  (x, y); }
+  __forceinline float rcp  ( const float x ) { return 1.0/x; }
+  __forceinline float rsqrt( const float x ) { return 1.0/::sqrtf(x); }
   __forceinline float sin  ( const float x ) { return ::sinf  (x); }
   __forceinline float sinh ( const float x ) { return ::sinhf (x); }
   __forceinline float sqrt ( const float x ) { return ::sqrtf (x); }
